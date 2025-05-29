@@ -33,13 +33,13 @@
 
   <script>
     const STORAGE_KEY = 'babyPoopData';
+    const VIEW_KEY = 'babyPoopView';
     const calendarEl = document.getElementById('calendar');
     const monthTitleEl = document.getElementById('month-title');
     const prevBtn = document.getElementById('prev');
     const nextBtn = document.getElementById('next');
     const totalCountEl = document.getElementById('total-count');
 
-    // Load and save state from localStorage
     let calendarData = {};
     function loadData() {
       const json = localStorage.getItem(STORAGE_KEY);
@@ -49,9 +49,22 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(calendarData));
     }
 
-    const today = new Date();
-    let currentYear = today.getFullYear();
-    let currentMonth = today.getMonth();
+    let currentYear, currentMonth;
+    function loadView() {
+      const view = localStorage.getItem(VIEW_KEY);
+      if (view) {
+        const [y, m] = view.split('-').map(Number);
+        currentYear = y;
+        currentMonth = m;
+      } else {
+        const today = new Date();
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth();
+      }
+    }
+    function saveView() {
+      localStorage.setItem(VIEW_KEY, `${currentYear}-${currentMonth}`);
+    }
 
     function formatKey(y, m, d) {
       const mm = String(m + 1).padStart(2, '0');
@@ -85,7 +98,6 @@
 
       const firstDay = new Date(year, monthIndex, 1).getDay();
       const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
       for (let i = 0; i < firstDay; i++) calendarEl.appendChild(document.createElement('div'));
 
       for (let date = 1; date <= daysInMonth; date++) {
@@ -99,11 +111,11 @@
           const slot = document.createElement('span');
           slot.classList.add('poop-slot');
           if (filled) slot.classList.add('filled');
-          slot.textContent = filled ? '💩' : '+';
+          slot.textContent = filled ? '🌈💩' : '+';
           slot.addEventListener('click', () => {
             calendarData[key][i] = !calendarData[key][i];
             slot.classList.toggle('filled');
-            slot.textContent = calendarData[key][i] ? '💩' : '+';
+            slot.textContent = calendarData[key][i] ? '🌈💩' : '+';
             updateTotal(currentYear, currentMonth);
             saveData();
           });
@@ -113,6 +125,7 @@
       }
 
       updateTotal(year, monthIndex);
+      saveView();
     }
 
     prevBtn.addEventListener('click', () => {
@@ -129,6 +142,7 @@
 
     // Initialize
     loadData();
+    loadView();
     renderCalendar(currentYear, currentMonth);
   </script>
 </body>
