@@ -1,98 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monthly Baby Poop Tracker</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 10px;
-      text-align: center;
-    }
-    .tracker-container {
-      width: 100%;
-      max-width: 600px;
-      margin: auto;
-    }
-    .controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      grid-gap: 4px;
-    }
-    .day, .weekday {
-      border: 1px solid #ccc;
-      padding: 4px;
-      height: 60px;
-      position: relative;
-      background: #fff;
-      box-sizing: border-box;
-    }
-    .weekday {
-      background: #f0f0f0;
-      text-align: center;
-      font-weight: bold;
-      user-select: none;
-      font-size: 0.9em;
-    }
-    .day-header {
-      font-weight: bold;
-      margin-bottom: 2px;
-      user-select: none;
-      font-size: 0.9em;
-    }
-    .poops {
-      position: absolute;
-      bottom: 2px;
-      left: 2px;
-      display: flex;
-      flex-wrap: wrap;
-    }
-    .poop-slot {
-      margin: 1px;
-      font-size: 16px;
-      cursor: pointer;
-      opacity: 0.2;
-      user-select: none;
-      line-height: 1;
-    }
-    .poop-slot.filled {
-      opacity: 1;
-    }
-    #total-counter {
-      font-size: 1.1em;
-      margin: 15px 0;
-    }
-    button {
-      background: none;
-      border: none;
-      font-size: 1.4em;
-      cursor: pointer;
-      padding: 5px;
-      user-select: none;
-    }
+    body { font-family: Arial, sans-serif; margin: 10px; text-align: center; }
+    .tracker-container { width: 100%; max-width: 600px; margin: auto; }
+    .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); grid-gap: 4px; }
+    .day, .weekday { border: 1px solid #ccc; padding: 4px; height: 60px; position: relative; background: #fff; box-sizing: border-box; cursor: pointer; }
+    .weekday { background: #f0f0f0; text-align: center; font-weight: bold; user-select: none; font-size: 0.9em; cursor: default; }
+    .day-header { font-weight: bold; margin-bottom: 2px; user-select: none; font-size: 0.9em; }
+    .placeholder { position: absolute; bottom: 4px; left: 4px; font-size: 18px; opacity: 0.5; }
+    #total-counter { font-size: 1.1em; margin: 15px 0; }
+    button { background: none; border: none; font-size: 1.4em; cursor: pointer; padding: 5px; user-select: none; }
     @media (max-width: 480px) {
-      .day, .weekday {
-        height: 50px;
-        padding: 2px;
-      }
-      .poop-slot {
-        font-size: 14px;
-      }
-      button {
-        font-size: 1.2em;
-      }
+      .day, .weekday { height: 50px; padding: 2px; }
+      .placeholder { font-size: 16px; }
+      button { font-size: 1.2em; }
     }
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 10; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+    .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width: 400px; border-radius: 8px; position: relative; }
+    .close-btn { position: absolute; top: 10px; right: 15px; color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close-btn:hover { color: #000; }
+    #modal-poops { display: flex; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+    #modal-poops .poop-slot { font-size: 24px; margin: 8px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>Baby Poop Tracker 🌈</h1>
+  <h1>Baby Poop Tracker</h1>
   <div id="total-counter">Total Poops: <span id="total-count">0</span></div>
   <div class="tracker-container">
     <div class="controls">
@@ -103,6 +41,15 @@
     <div class="calendar" id="calendar"></div>
   </div>
 
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <span id="close-btn" class="close-btn">×</span>
+      <h2 id="modal-date"></h2>
+      <div id="modal-poops"></div>
+    </div>
+  </div>
+
   <script>
     const STORAGE_KEY = 'babyPoopData';
     const VIEW_KEY = 'babyPoopView';
@@ -111,6 +58,10 @@
     const prevBtn = document.getElementById('prev');
     const nextBtn = document.getElementById('next');
     const totalCountEl = document.getElementById('total-count');
+    const modal = document.getElementById('modal');
+    const closeBtn = document.getElementById('close-btn');
+    const modalDateEl = document.getElementById('modal-date');
+    const modalPoops = document.getElementById('modal-poops');
 
     let calendarData = {};
     function loadData() {
@@ -125,9 +76,7 @@
     function loadView() {
       const view = localStorage.getItem(VIEW_KEY);
       if (view) {
-        const [y, m] = view.split('-').map(Number);
-        currentYear = y;
-        currentMonth = m;
+        [currentYear, currentMonth] = view.split('-').map(Number);
       } else {
         const today = new Date();
         currentYear = today.getFullYear();
@@ -148,9 +97,7 @@
       let sum = 0;
       const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
       Object.keys(calendarData).forEach(key => {
-        if (key.startsWith(prefix)) {
-          sum += calendarData[key].filter(v => v).length;
-        }
+        if (key.startsWith(prefix)) sum += calendarData[key].filter(v => v).length;
       });
       totalCountEl.textContent = sum;
     }
@@ -159,43 +106,46 @@
       calendarEl.innerHTML = '';
     }
 
+    function openModal(key, date) {
+      modal.style.display = 'block';
+      modalDateEl.textContent = `Day ${date}`;
+      modalPoops.innerHTML = '';
+      calendarData[key].forEach((filled, i) => {
+        const slot = document.createElement('span');
+        slot.classList.add('poop-slot');
+        slot.textContent = filled ? '💩' : '+';
+        slot.addEventListener('click', () => {
+          calendarData[key][i] = !calendarData[key][i];
+          slot.textContent = calendarData[key][i] ? '💩' : '+';
+          saveData();
+          renderCalendar(currentYear, currentMonth);
+        });
+        modalPoops.appendChild(slot);
+      });
+    }
+
+    closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    window.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
     function renderCalendar(year, monthIndex) {
       clearCalendar();
       const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
       monthTitleEl.textContent = `${monthNames[monthIndex]} ${year}`;
-
       ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
         const wd = document.createElement('div'); wd.classList.add('weekday'); wd.textContent = day; calendarEl.appendChild(wd);
       });
-
       const firstDay = new Date(year, monthIndex, 1).getDay();
       const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
       for (let i = 0; i < firstDay; i++) calendarEl.appendChild(document.createElement('div'));
-
       for (let date = 1; date <= daysInMonth; date++) {
         const cell = document.createElement('div'); cell.classList.add('day');
         const key = formatKey(year, monthIndex, date);
         if (!calendarData[key]) calendarData[key] = [false, false, false, false, false];
-        cell.innerHTML = `<div class="day-header">${date}</div><div class="poops"></div>`;
-        const poopsContainer = cell.querySelector('.poops');
-
-        calendarData[key].forEach((filled, i) => {
-          const slot = document.createElement('span');
-          slot.classList.add('poop-slot');
-          if (filled) slot.classList.add('filled');
-          slot.textContent = filled ? '💩' : '+';
-          slot.addEventListener('click', () => {
-            calendarData[key][i] = !calendarData[key][i];
-            slot.classList.toggle('filled');
-            slot.textContent = calendarData[key][i] ? '💩' : '+';
-            updateTotal(currentYear, currentMonth);
-            saveData();
-          });
-          poopsContainer.appendChild(slot);
-        });
+        const count = calendarData[key].filter(v => v).length;
+        cell.innerHTML = `<div class="day-header">${date}</div><div class="placeholder">${count>0? '💩 ' + count : '+'}</div>`;
+        cell.addEventListener('click', () => openModal(key, date));
         calendarEl.appendChild(cell);
       }
-
       updateTotal(year, monthIndex);
       saveView();
     }
@@ -205,16 +155,13 @@
       currentYear = currentMonth === 11 ? currentYear - 1 : currentYear;
       renderCalendar(currentYear, currentMonth);
     });
-
     nextBtn.addEventListener('click', () => {
       currentMonth = currentMonth < 11 ? currentMonth + 1 : 0;
       currentYear = currentMonth === 0 ? currentYear + 1 : currentYear;
       renderCalendar(currentYear, currentMonth);
     });
 
-    loadData();
-    loadView();
-    renderCalendar(currentYear, currentMonth);
+    loadData(); loadView(); renderCalendar(currentYear, currentMonth);
   </script>
 </body>
 </html>
