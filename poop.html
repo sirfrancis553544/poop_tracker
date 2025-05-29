@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monthly Baby Poop Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
+    .tracker-container { max-width: 600px; margin: auto; }
+    .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); grid-gap: 5px; }
+    .day, .weekday { border: 1px solid #ccc; padding: 5px; height: 80px; position: relative; background: #fff; }
+    .weekday { background: #f0f0f0; text-align: center; font-weight: bold; user-select: none; }
+    .day-header { font-weight: bold; margin-bottom: 3px; user-select: none; }
+    .poops { position: absolute; bottom: 3px; left: 3px; display: flex; flex-wrap: wrap; }
+    .poop-slot { margin: 1px; font-size: 18px; cursor: pointer; opacity: 0.2; user-select: none; }
+    .poop-slot.filled { opacity: 1; }
+    #total-counter { font-size: 1.2em; margin: 20px 0; }
+    button { background: none; border: none; font-size: 1.5em; cursor: pointer; padding: 5px 10px; }
+  </style>
+</head>
+<body>
+  <h1>Baby Poop Tracker</h1>
+  <div id="total-counter">Total Poops: <span id="total-count">0</span></div>
+  <div class="tracker-container">
+    <div class="controls">
+      <button id="prev">←</button>
+      <div class="month-title" id="month-title"></div>
+      <button id="next">→</button>
+    </div>
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'babyPoopData';
+    const calendarEl = document.getElementById('calendar');
+    const monthTitleEl = document.getElementById('month-title');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+    const totalCountEl = document.getElementById('total-count');
+
+    // Load and save state from localStorage
+    let calendarData = {};
+    function loadData() {
+      const json = localStorage.getItem(STORAGE_KEY);
+      if (json) calendarData = JSON.parse(json);
+    }
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(calendarData));
+    }
+
+    const today = new Date();
+    let currentYear = today.getFullYear();
+    let currentMonth = today.getMonth();
+
+    function formatKey(y, m, d) {
+      const mm = String(m + 1).padStart(2, '0');
+      const dd = String(d).padStart(2, '0');
+      return `${y}-${mm}-${dd}`;
+    }
+
+    function updateTotal(year, month) {
+      let sum = 0;
+      const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+      Object.keys(calendarData).forEach(key => {
+        if (key.startsWith(prefix)) {
+          sum += calendarData[key].filter(v => v).length;
+        }
+      });
+      totalCountEl.textContent = sum;
+    }
+
+    function clearCalendar() {
+      calendarEl.innerHTML = '';
+    }
+
+    function renderCalendar(year, monthIndex) {
+      clearCalendar();
+      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      monthTitleEl.textContent = `${monthNames[monthIndex]} ${year}`;
+
+      ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
+        const wd = document.createElement('div'); wd.classList.add('weekday'); wd.textContent = day; calendarEl.appendChild(wd);
+      });
+
+      const firstDay = new Date(year, monthIndex, 1).getDay();
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
+      for (let i = 0; i < firstDay; i++) calendarEl.appendChild(document.createElement('div'));
+
+      for (let date = 1; date <= daysInMonth; date++) {
+        const cell = document.createElement('div'); cell.classList.add('day');
+        const key = formatKey(year, monthIndex, date);
+        if (!calendarData[key]) calendarData[key] = [false, false, false, false, false];
+        cell.innerHTML = `<div class="day-header">${date}</div><div class="poops"></div>`;
+        const poopsContainer = cell.querySelector('.poops');
+
+        calendarData[key].forEach((filled, i) => {
+          const slot = document.createElement('span');
+          slot.classList.add('poop-slot');
+          if (filled) slot.classList.add('filled');
+          slot.textContent = filled ? '💩' : '+';
+          slot.addEventListener('click', () => {
+            calendarData[key][i] = !calendarData[key][i];
+            slot.classList.toggle('filled');
+            slot.textContent = calendarData[key][i] ? '💩' : '+';
+            updateTotal(currentYear, currentMonth);
+            saveData();
+          });
+          poopsContainer.appendChild(slot);
+        });
+        calendarEl.appendChild(cell);
+      }
+
+      updateTotal(year, monthIndex);
+    }
+
+    prevBtn.addEventListener('click', () => {
+      currentMonth = currentMonth > 0 ? currentMonth - 1 : 11;
+      currentYear = currentMonth === 11 ? currentYear - 1 : currentYear;
+      renderCalendar(currentYear, currentMonth);
+    });
+
+    nextBtn.addEventListener('click', () => {
+      currentMonth = currentMonth < 11 ? currentMonth + 1 : 0;
+      currentYear = currentMonth === 0 ? currentYear + 1 : currentYear;
+      renderCalendar(currentYear, currentMonth);
+    });
+
+    // Initialize
+    loadData();
+    renderCalendar(currentYear, currentMonth);
+  </script>
+</body>
+</html>
